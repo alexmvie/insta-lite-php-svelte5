@@ -1,115 +1,115 @@
 # Insta-Lite Development TODO List
 
 ## Core Features
-[X] Database setup and connection
-[X] Basic PHP server setup
-[X] Security configuration
+- [X] Database setup and connection
+- [X] Basic PHP server setup
+- [X] Security configuration
 
 ## User Authentication
-[X] User registration
-    [X] User registration form
-    [X] Email validation (development mode)
-    [X] Password hashing
-    [X] Username uniqueness check
-    [X] Error handling
+- [X] User registration
+  - [X] User registration form
+  - [X] Email validation (development mode)
+  - [X] Password hashing
+  - [X] Username uniqueness check
+  - [X] Error handling
 
-[X] User login/logout
-    [X] Login form
-    [X] Session management
-    [ ] Remember me functionality
-    [X] Logout functionality
-    [X] Email implementation for production (SendGrid/Mailgun)
+- [X] User login/logout
+  - [X] Login form
+  - [X] Session management
+  - [ ] Remember me functionality
+  - [X] Logout functionality
+  - [X] Email implementation for production (SendGrid/Mailgun)
 
 ## Profile Features
-[ ] User profiles
-    [ ] Profile creation
-    [ ] Profile picture upload
-    [ ] Bio editing
-    [ ] Username change
-    [X] Basic profile info
+- [ ] User profiles
+  - [ ] Profile creation
+  - [ ] Profile picture upload
+  - [ ] Bio editing
+  - [ ] Username change
+  - [X] Basic profile info
 
-[ ] User settings
-    [ ] Privacy settings
-    [ ] Account settings
-    [ ] Password change
+- [ ] User settings
+  - [ ] Privacy settings
+  - [ ] Account settings
+  - [ ] Password change
 
 ## Post Features
-[ ] Post creation
-    [ ] Image upload
-    [ ] Caption
-    [ ] Location tagging
-    [ ] Hashtag support
-    [ ] Image optimization
+- [ ] Post creation
+  - [ ] Image upload
+  - [ ] Caption
+  - [ ] Location tagging
+  - [ ] Hashtag support
+  - [ ] Image optimization
 
-[ ] Post display
-    [ ] Grid view
-    [ ] Single post view
-    [ ] Like functionality
-    [ ] Comment system
-    [ ] Share functionality
+- [ ] Post display
+  - [ ] Grid view
+  - [ ] Single post view
+  - [ ] Like functionality
+  - [ ] Comment system
+  - [ ] Share functionality
 
 ## Social Features
-[ ] Follow system
-    [ ] Follow/unfollow users
-    [ ] Followers list
-    [ ] Following list
+- [ ] Follow system
+  - [ ] Follow/unfollow users
+  - [ ] Followers list
+  - [ ] Following list
 
-[ ] Notifications
-    [ ] Like notifications
-    [ ] Comment notifications
-    [ ] Follow notifications
+- [ ] Notifications
+  - [ ] Like notifications
+  - [ ] Comment notifications
+  - [ ] Follow notifications
 
 ## Search Features
-[ ] User search
-    [ ] Username search
-    [ ] Bio search
+- [ ] User search
+  - [ ] Username search
+  - [ ] Bio search
 
-[ ] Post search
-    [ ] Hashtag search
-    [ ] Location search
+- [ ] Post search
+  - [ ] Hashtag search
+  - [ ] Location search
 
 ## UI/UX Features
-[ ] Responsive design
-    [ ] Mobile-first approach
-    [ ] Desktop support
+- [ ] Responsive design
+  - [ ] Mobile-first approach
+  - [ ] Desktop support
 
-[ ] Loading states
-    [ ] Image loading
-    [ ] Post loading
-    [ ] Form loading
+- [ ] Loading states
+  - [ ] Image loading
+  - [ ] Post loading
+  - [ ] Form loading
 
-[ ] Error handling
-    [ ] User-friendly error messages
-    [ ] Graceful error recovery
+- [ ] Error handling
+  - [ ] User-friendly error messages
+  - [ ] Graceful error recovery
 
 ## Performance Optimizations
-[ ] Image caching
-[ ] Lazy loading
-[ ] Database query optimization
-[ ] Asset minification
+- [ ] Image caching
+- [ ] Lazy loading
+- [ ] Database query optimization
+- [ ] Asset minification
 
 ## Security Features
-[ ] CSRF protection
-[ ] XSS prevention
-[ ] SQL injection prevention
-[ ] Rate limiting
-[ ] Input validation
+- [ ] CSRF protection
+- [ ] XSS prevention
+- [ ] SQL injection prevention
+- [ ] Rate limiting
+- [ ] Input validation
 
 ## Additional Features
-[ ] Stories
-[ ] Direct messaging
-[ ] Explore page
-[ ] Trending hashtags
-[ ] Analytics dashboard
+- [ ] Stories
+- [ ] Direct messaging
+- [ ] Explore page
+  - [ ] Trending hashtags
+  - [ ] Analytics dashboard
 
 ## Testing
-[ ] Unit tests
-[ ] Integration tests
-[ ] Security audits
-[ ] Performance testing
+- [ ] Unit tests
+- [ ] Integration tests
+- [ ] Security audits
+- [ ] Performance testing
 
 ## Deployment
-[ ] Deployment script
-[ ] Environment configuration
-[ ] Database migration scripts
-[ ] Backup procedures
+- [ ] Deployment script
+- [ ] Environment configuration
+- [ ] Database migration scripts
+- [ ] Backup procedures
