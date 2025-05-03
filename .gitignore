@@ -1,0 +1,93 @@
+.env
+*.log
+node_modules/
+vendor/
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+
+# PHP
+*.php~
+*.php.swp
+*.php.swo
+
+# Database
+src/config/database.php
+src/config/database.example.php
+
+# API keys and secrets
+*.key
+*.pem
+*.cert
+
+# Debug files
+src/debug/*
+!src/debug/.gitkeep
+
+# Database dumps
+*.sql
+
+# Deployment files
+deploy.php
+deploy.sh
+setup_db.php
+test_db.php
+
+# IDE
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Composer
+composer.lock
+composer.phar
+
+# Build files
+*.phar
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+
+# Test files
+tests/
+*.test.php
+
+# Coverage reports
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+# Editor files
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# PHP error logs
+php_errors.log
+
+# PHP session files
+sess_*

@@ -1,0 +1,13 @@
+# Enable URL rewriting
+RewriteEngine On
+
+# Set the base directory
+RewriteBase /
+
+# Redirect all requests to public/index.php
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteRule ^(.*)$ public/index.php [L]
+
+# If the file exists in the public directory, serve it directly
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^public/(.*)$ public/$1 [L]
