@@ -15,14 +15,14 @@ $routes = [
     '/login' => '/src/pages/login.php',
     '/register' => '/src/pages/register.php',
     '/verify' => '/src/pages/verify.php',
-    '/logout' => '/src/auth/logout.php',
+    '/logout' => '/api/logout.php',
     '/verification-pending' => '/src/pages/verification-pending.php',
     
     // API routes
-    '/api/likes.php' => '/src/api/likes.php',
-    '/api/comments.php' => '/src/api/comments.php',
-    '/api/posts.php' => '/src/api/posts.php',
-    '/api/like.php' => '/src/api/likes.php',  // Alias for consistency
+    '/api/likes.php' => '/api/likes.php',
+    '/api/comments.php' => '/api/comments.php',
+    '/api/posts.php' => '/api/posts.php',
+    '/api/like.php' => '/api/likes.php',  // Alias for consistency
     
     // Debug routes
     '/debug/mail' => '/src/debug/debugmail.php',

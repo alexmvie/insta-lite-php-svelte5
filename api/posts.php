@@ -1,85 +1,99 @@
 <?php
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../auth/auth.php';
+// Check if APP_ROOT is defined
+if (!defined('APP_ROOT')) {
+    define('APP_ROOT', dirname(dirname(__DIR__)));
+}
 
-// Get parameters
-$limit = $_GET['limit'] ?? 20;
-$offset = $_GET['offset'] ?? 0;
+require_once APP_ROOT . '/src/config/database.php';
+require_once APP_ROOT . '/api/auth.php';
+
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Unauthorized']);
+    exit;
+}
 
 // Get the database connection
 $db = (new Database())->getConnection();
 
+// Get parameters from query
+$offset = isset($_GET['offset']) ? intval($_GET['offset']) : 0;
+$limit = isset($_GET['limit']) ? intval($_GET['limit']) : 3; // Default to 3 posts per batch
+$user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
+$username = isset($_GET['username']) ? $_GET['username'] : null;
+
+// Validate parameters
+if ($offset < 0) $offset = 0;
+if ($limit <= 0 || $limit > 10) $limit = 3; // Limit to maximum 10 posts per request
+
+// Get current user ID
+$current_user_id = $_SESSION['user_id'];
+
 try {
-    // Get posts from all users, sorted by date
-    $stmt = $db->prepare("
+    // Build the query based on filters
+    $query = "
         SELECT 
             p.*, 
             u.username, 
-            u.profile_picture 
+            u.profile_picture,
+            (SELECT COUNT(*) FROM likes WHERE post_id = p.id) AS like_count,
+            (SELECT COUNT(*) FROM comments WHERE post_id = p.id) AS comment_count,
+            (SELECT COUNT(*) > 0 FROM likes WHERE post_id = p.id AND user_id = :current_user_id) AS is_liked_by_current_user
         FROM posts p 
         JOIN users u ON p.user_id = u.id 
-        ORDER BY p.created_at DESC 
-        LIMIT :limit OFFSET :offset
-    ");
+    ";
+    
+    // Add WHERE clause if filtering by user
+    if ($user_id) {
+        $query .= " WHERE p.user_id = :user_id ";
+    } elseif ($username) {
+        $query .= " WHERE u.username = :username ";
+    }
+    
+    // Add ORDER BY and LIMIT
+    $query .= " ORDER BY p.created_at DESC LIMIT :limit OFFSET :offset";
+    
+    // Prepare the statement
+    $stmt = $db->prepare($query);
+    
+    $stmt->bindParam(':current_user_id', $current_user_id, PDO::PARAM_INT);
+    
+    if ($user_id) {
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    } elseif ($username) {
+        $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+    }
     
     $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     
-    $posts = $stmt->fetchAll();
+    $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Generate HTML for posts
-    $html = '';
-    foreach ($posts as $post) {
-        $html .= "<div class='bg-white rounded-lg shadow-md overflow-hidden'>";
-        $html .= "    <div class='p-4'>";
-        $html .= "        <div class='flex items-center mb-4'>";
-        $html .= "            <img src='" . htmlspecialchars($post['profile_picture'] ?? 'default-avatar.png') . "'";
-        $html .= "                 alt='Profile Picture'";
-        $html .= "                 class='w-10 h-10 rounded-full mr-3'>";
-        $html .= "            <div>";
-        $html .= "                <h3 class='font-semibold'>" . htmlspecialchars($post['username']) . "</h3>";
-        $html .= "                <p class='text-sm text-gray-500'>" . date('M d, Y', strtotime($post['created_at'])) . "</p>";
-        $html .= "            </div>";
-        $html .= "        </div>";
-
-        if ($post['image_url']) {
-            $html .= "        <img src='" . htmlspecialchars($post['image_url']) . "'";
-            $html .= "             alt='Post Image'";
-            $html .= "             class='w-full h-64 object-cover'>";
-        }
-
-        $html .= "        <p class='mt-4'>" . nl2br(htmlspecialchars($post['caption'])) . "</p>";
-        
-        $html .= "        <div class='mt-4 flex justify-between items-center text-sm text-gray-500'>";
-        $html .= "            <div class='flex items-center space-x-2'>";
-        $html .= "                <button class='like-button'";
-        $html .= "                        hx-post='/api/like'";
-        $html .= "                        hx-vals='{\"id\": \"" . $post['id'] . "\"}'";  
-        $html .= "                        hx-target='this'>";
-        $html .= "                    <svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>";
-        $html .= "                        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z'/></svg>";
-        $html .= "                    <span class='ml-1'>Like</span>";
-        $html .= "                </button>";
-        $html .= "                <span class='like-count'>0</span>";
-        $html .= "            </div>";
-        $html .= "            <div class='flex items-center space-x-2'>";
-        $html .= "                <button class='comment-button'";
-        $html .= "                        hx-post='/api/comment'";
-        $html .= "                        hx-vals='{\"id\": \"" . $post['id'] . "\"}'";  
-        $html .= "                        hx-target='this'>";
-        $html .= "                    <svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>";
-        $html .= "                        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z'/></svg>";
-        $html .= "                    <span class='ml-1'>Comment</span>";
-        $html .= "                </button>";
-        $html .= "            </div>";
-        $html .= "        </div>";
-        $html .= "    </div>";
-        $html .= "</div>";
-    }
+    // Count total posts for pagination info
+    $stmt = $db->prepare("SELECT COUNT(*) as total FROM posts");
+    $stmt->execute();
+    $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    echo $html;
+    // Prepare response
+    $response = [
+        'success' => true,
+        'posts' => $posts,
+        'has_more' => ($offset + $limit) < $total
+    ];
+    
+    // Return JSON response
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Error fetching posts']);
+    error_log("Posts API error: " . $e->getMessage());
 }

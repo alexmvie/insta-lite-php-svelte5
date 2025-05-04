@@ -3,7 +3,7 @@
 session_start();
 
 // Include the auth class
-require_once APP_ROOT . '/src/auth/auth.php';
+require_once APP_ROOT . '/api/auth.php';
 
 // Check if user is already logged in
 if (isset($_SESSION['user_id'])) {

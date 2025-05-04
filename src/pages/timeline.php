@@ -5,7 +5,7 @@ if (!defined('APP_ROOT')) {
 }
 
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../auth/auth.php';
+require_once APP_ROOT . '/api/auth.php';
 
 // Get the database connection
 $db = (new Database())->getConnection();

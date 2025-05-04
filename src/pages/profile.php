@@ -5,7 +5,7 @@ if (!defined('APP_ROOT')) {
 }
 
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../auth/auth.php';
+require_once APP_ROOT . '/api/auth.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {

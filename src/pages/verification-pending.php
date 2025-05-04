@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once APP_ROOT . '/src/auth/auth.php';
+require_once APP_ROOT . '/api/auth.php';
 
 // If user is already logged in, redirect to home
 if (isset($_SESSION['user_id'])) {
