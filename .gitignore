@@ -14,8 +14,14 @@ vendor/
 *.php.swo
 
 # Database
+server/config/database.php
+!server/config/database.example.php
 src/config/database.php
 !src/config/database.example.php
+
+# Local env files
+server/.env
+server/.env.*
 
 # API keys and secrets
 *.key
