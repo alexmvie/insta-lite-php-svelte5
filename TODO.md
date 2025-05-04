@@ -48,6 +48,16 @@
   - [ ] Comment system
   - [ ] Share functionality
 
+- [ ] Public Timeline
+  - [ ] Create timeline page
+  - [ ] Display posts from all users
+  - [ ] Sort posts by date (newest first)
+  - [ ] Pagination
+  - [ ] Load more functionality
+  - [ ] Infinite scroll
+  - [ ] Post loading states
+  - [ ] Error handling
+
 ## Social Features
 - [ ] Follow system
   - [ ] Follow/unfollow users

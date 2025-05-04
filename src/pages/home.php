@@ -34,47 +34,15 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insta-Lite</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <title>Insta-Lite - Home</title>
+    <script src="https://unpkg.com/htmx.org@1.9.16"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-    <div class="min-h-screen">
-        <!-- Navigation -->
-        <nav class="bg-white shadow-md">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex">
-                        <div class="flex-shrink-0 flex items-center">
-                            <a href="/" class="text-xl font-bold text-gray-800">Insta-Lite</a>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center">
-                        <div class="ml-3 relative">
-                            <div class="flex items-center space-x-4">
-                                <div class="flex-shrink-0">
-                                    <img class="h-8 w-8 rounded-full" 
-                                         src="<?php echo $user['profile_picture'] ?? 'https://via.placeholder.com/32'; ?>" 
-                                         alt="Profile picture">
-                                </div>
-                                <div class="flex-shrink-0">
-                                    <span class="text-sm font-medium text-gray-700">
-                                        <?php echo htmlspecialchars($user['username']); ?>
-                                    </span>
-                                </div>
-                                <a href="/logout" 
-                                   class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">
-                                    Logout
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </nav>
-
+    <?php require_once APP_ROOT . '/src/components/navbar.php'; ?>
+    
+    <div class="min-h-screen pt-16">
         <!-- Main Content -->
         <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             <div class="px-4 py-6 sm:px-0">

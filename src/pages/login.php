@@ -56,7 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="bg-gray-100">
     <div class="min-h-screen flex items-center justify-center">
         <div class="bg-white p-8 rounded-lg shadow-md w-96">
-            <h1 class="text-2xl font-bold mb-6 text-center">Insta-Lite</h1>
+            <div class="flex justify-center mb-6">
+                <?php require_once APP_ROOT . '/src/components/logo.php'; ?>
+            </div>
 
             <?php if (isset($error)): ?>
                 <div class="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">

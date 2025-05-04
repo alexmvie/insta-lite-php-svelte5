@@ -7,7 +7,10 @@
 
 // Map of routes to their corresponding files
 $routes = [
-    '/' => '/src/pages/home.php',
+    '/' => '/src/pages/timeline.php',  // Redirect home to timeline
+    '/timeline' => '/src/pages/timeline.php',
+    '/profile' => '/src/pages/profile.php',
+    '/create-post' => '/src/pages/create-post.php',
     '/login' => '/src/pages/login.php',
     '/register' => '/src/pages/register.php',
     '/verify' => '/src/pages/verify.php',

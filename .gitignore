@@ -15,7 +15,7 @@ vendor/
 
 # Database
 src/config/database.php
-src/config/database.example.php
+!src/config/database.example.php
 
 # API keys and secrets
 *.key
@@ -23,7 +23,7 @@ src/config/database.example.php
 *.cert
 
 # Debug files
-src/debug/*
+!src/debug/*
 !src/debug/.gitkeep
 
 # Database dumps
