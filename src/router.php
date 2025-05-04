@@ -10,6 +10,7 @@ $routes = [
     '/' => '/src/pages/timeline.php',  // Redirect home to timeline
     '/timeline' => '/src/pages/timeline.php',
     '/profile' => '/src/pages/profile.php',
+    '/profile/:username' => '/src/pages/profile.php',
     '/create-post' => '/src/pages/create-post.php',
     '/login' => '/src/pages/login.php',
     '/register' => '/src/pages/register.php',
@@ -43,10 +44,48 @@ if (empty($request_uri)) {
     $request_uri = '/';
 }
 
+// Handle root path specially to avoid redirect loops
+if ($request_uri === '/') {
+    require_once APP_ROOT . '/src/pages/timeline.php';
+    exit;
+}
+
 // Check if the route exists
-if (isset($routes[$request_uri])) {
+$matched = false;
+foreach ($routes as $route => $file) {
+    // Handle dynamic routes with :param
+    if (strpos($route, ':') !== false) {
+        // Get the parameter name (e.g., 'username' from ':username')
+        $parts = explode('/', $route);
+        foreach ($parts as $i => $part) {
+            if (strpos($part, ':') === 0) {
+                $paramName = substr($part, 1); // Remove the ':' prefix
+                $parts[$i] = '([^/]+)'; // Replace with regex pattern
+            }
+        }
+        
+        // Build the regex pattern
+        $pattern = '/^' . str_replace('/', '\/', implode('/', $parts)) . '$/';
+        
+        // Try to match the URL
+        if (preg_match($pattern, $request_uri, $matches)) {
+            // Extract the parameter value
+            if (isset($matches[1])) {
+                $_GET[$paramName] = $matches[1];
+            }
+            $matched = true;
+            $file = $routes[$route];
+            break;
+        }
+    } else if ($route === $request_uri) {
+        $matched = true;
+        break;
+    }
+}
+
+if ($matched) {
     // Include the corresponding file
-    require_once APP_ROOT . $routes[$request_uri];
+    require_once APP_ROOT . $file;
     exit;
 }
 

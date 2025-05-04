@@ -80,7 +80,7 @@ if (!isset($post)) {
 }">
     <!-- Post Header -->
     <div class="p-3">
-        <div class="flex items-center mb-3">
+        <a href="/profile?username=<?php echo urlencode($post['username']); ?>" class="flex items-center mb-3 hover:opacity-80 transition-opacity">
             <img src="<?php 
                 // Use fun avatar if profile picture is not set or is default
                 if (empty($post['profile_picture']) || $post['profile_picture'] == 'default-avatar.png') {
@@ -99,7 +99,7 @@ if (!isset($post)) {
                     <?php echo date('M d, Y', strtotime($post['created_at'])); ?>
                 </p>
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- Post Image -->

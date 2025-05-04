@@ -12,90 +12,102 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: /login');
+// Get the username from URL
+$username = isset($_GET['username']) ? $_GET['username'] : '';
+
+if (empty($username)) {
+    header('Location: /');
     exit;
 }
 
 // Get the database connection
 $db = (new Database())->getConnection();
 
-// Initialize variables
-$user = [];
-$posts = [];
-
+// Get user info
 try {
-    // Get basic user data first
-    $stmt = $db->prepare("SELECT id, username, email, profile_picture, bio, created_at FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $user = $stmt->fetch();
+    $stmt = $db->prepare("SELECT id, username, profile_picture, bio, created_at FROM users WHERE username = ?");
+    $stmt->execute([$username]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$user) {
-        // User not found, redirect to login
-        session_destroy();
-        header('Location: /login');
+        header('Location: /404');
         exit;
     }
-    
-    // Set default counts
-    $user['post_count'] = 0;
-    $user['follower_count'] = 0;
-    $user['following_count'] = 0;
-    
-    // Check if posts table exists
-    $postsTableExists = false;
-    try {
-        $check = $db->query("SHOW TABLES LIKE 'posts'");
-        $postsTableExists = ($check->rowCount() > 0);
-    } catch (Exception $e) {
-        // Table doesn't exist
-    }
-    
-    // Check if follows table exists
-    $followsTableExists = false;
-    try {
-        $check = $db->query("SHOW TABLES LIKE 'follows'");
-        $followsTableExists = ($check->rowCount() > 0);
-    } catch (Exception $e) {
-        // Table doesn't exist
-    }
-    
-    // Get post count if table exists
-    if ($postsTableExists) {
-        $stmt = $db->prepare("SELECT COUNT(*) as count FROM posts WHERE user_id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $result = $stmt->fetch();
-        $user['post_count'] = $result['count'] ?? 0;
-        
-        // Get user posts
+} catch (Exception $e) {
+    error_log("Profile error: " . $e->getMessage());
+    header('Location: /404');
+    exit;
+}
+
+// Initialize posts array
+$posts = [];
+
+// Get posts for this user
+try {
+    // Check if the posts table exists
+    $check = $db->query("SHOW TABLES LIKE 'posts'");
+    if ($check && $check->rowCount() > 0) {
         $stmt = $db->prepare("
-            SELECT * FROM posts 
-            WHERE user_id = ? 
-            ORDER BY created_at DESC
+            SELECT 
+                p.*, 
+                u.username, 
+                u.profile_picture,
+                (SELECT COUNT(*) FROM likes WHERE post_id = p.id) AS like_count,
+                (SELECT COUNT(*) FROM comments WHERE post_id = p.id) AS comment_count
+            FROM posts p 
+            JOIN users u ON p.user_id = u.id 
+            WHERE u.username = ?
+            ORDER BY p.created_at DESC 
+            LIMIT 10
         ");
-        $stmt->execute([$_SESSION['user_id']]);
-        $posts = $stmt->fetchAll();
-    }
-    
-    // Get follower and following counts if table exists
-    if ($followsTableExists) {
-        // Get follower count
-        $stmt = $db->prepare("SELECT COUNT(*) as count FROM follows WHERE following_id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $result = $stmt->fetch();
-        $user['follower_count'] = $result['count'] ?? 0;
-        
-        // Get following count
-        $stmt = $db->prepare("SELECT COUNT(*) as count FROM follows WHERE follower_id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $result = $stmt->fetch();
-        $user['following_count'] = $result['count'] ?? 0;
+        $stmt->execute([$username]);
+        $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Exception $e) {
-    // Handle error silently
-    error_log("Profile error: " . $e->getMessage());
+    error_log("Profile posts error: " . $e->getMessage());
+    // Keep posts as empty array
 }
+
+// Get follower/following counts
+try {
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM follows WHERE followed_user_id = ?");
+    $stmt->execute([$user['id']]);
+    $followers = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+    
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM follows WHERE following_user_id = ?");
+    $stmt->execute([$user['id']]);
+    $following = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+} catch (Exception $e) {
+    error_log("Profile counts error: " . $e->getMessage());
+    $followers = 0;
+    $following = 0;
+}
+
+// Check if current user follows this user (if logged in)
+$isFollowing = false;
+if (isset($_SESSION['user_id'])) {
+    try {
+        $stmt = $db->prepare("
+            SELECT COUNT(*) as count 
+            FROM follows 
+            WHERE following_user_id = ? AND followed_user_id = ?
+        ");
+        $stmt->execute([$_SESSION['user_id'], $user['id']]);
+        $isFollowing = $stmt->fetch(PDO::FETCH_ASSOC)['count'] > 0;
+    } catch (Exception $e) {
+        error_log("Follow check error: " . $e->getMessage());
+    }
+}
+
+// Initialize variables
+$user['post_count'] = count($posts);
+$user['follower_count'] = $followers;
+$user['following_count'] = $following;
+
+// Get current user ID if logged in
+$current_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+
+// We already have the posts from earlier, no need to fetch them again
 ?>
 
 <!DOCTYPE html>
@@ -131,7 +143,7 @@ try {
                     </div>
                     <div class="text-center w-full">
                         <h1 class="text-xl font-bold"><?php echo htmlspecialchars($user['username']); ?></h1>
-                        <p class="text-gray-600 text-sm mb-2"><?php echo htmlspecialchars($user['email']); ?></p>
+                        <p class="text-gray-600 text-sm mb-2">Member since <?php echo date('M Y', strtotime($user['created_at'])); ?></p>
                         
                         <?php if (!empty($user['bio'])): ?>
                             <p class="text-gray-700 text-sm mb-3"><?php echo nl2br(htmlspecialchars($user['bio'])); ?></p>
@@ -151,14 +163,25 @@ try {
                                 <div class="text-gray-500 text-xs">following</div>
                             </div>
                         </div>
-                        <!-- Logout Button -->
+                        <!-- Action Buttons -->
                         <div class="mt-4">
-                            <a href="/logout" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium rounded-md transition duration-150 ease-in-out">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                                </svg>
-                                Logout
-                            </a>
+                            <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] != $user['id']): ?>
+                                <!-- Follow/Unfollow button for other users -->
+                                <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded-full text-sm">
+                                    <?php echo $isFollowing ? 'Unfollow' : 'Follow'; ?>
+                                </button>
+                            <?php elseif (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $user['id']): ?>
+                                <!-- Edit Profile button for own profile -->
+                                <button class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-1 rounded-full text-sm mr-2">
+                                    Edit Profile
+                                </button>
+                                <a href="/logout" class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium rounded-md transition duration-150 ease-in-out">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                    </svg>
+                                    Logout
+                                </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -166,29 +189,16 @@ try {
             
             <!-- User Posts -->
             <h2 class="text-lg font-bold mb-3 mt-4">Posts</h2>
-            
-            <?php if (count($posts) > 0): ?>
-                <div class="grid grid-cols-3 gap-1">
-                    <?php foreach ($posts as $post): ?>
-                        <a href="/post/<?php echo $post['id']; ?>" class="aspect-square overflow-hidden bg-gray-100 rounded">
-                            <?php if (isset($post['image_url']) && $post['image_url']): ?>
-                                <img src="<?php echo htmlspecialchars($post['image_url']); ?>" 
-                                     alt="Post Image" 
-                                     class="w-full h-full object-cover">
-                            <?php else: ?>
-                                <div class="w-full h-full flex items-center justify-center p-2 text-xs text-center text-gray-500">
-                                    <?php echo nl2br(htmlspecialchars(substr($post['caption'], 0, 50) . (strlen($post['caption']) > 50 ? '...' : ''))); ?>
-                                </div>
-                            <?php endif; ?>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
-            <?php else: ?>
-                <div class="bg-white shadow rounded-lg p-4 text-center border border-gray-100">
-                    <p class="text-gray-600 text-sm">No posts yet.</p>
-                    <a href="/create-post" class="mt-2 inline-block bg-blue-500 text-white px-4 py-2 rounded-full text-sm">Create your first post</a>
-                </div>
-            <?php endif; ?>
+            <!-- User Posts -->
+            <div class="posts-grid mt-4">
+                <?php 
+                // Use the timeline component with the username filter
+                $username = $user['username']; // Pass the username to the timeline component
+                $limit = 12; // Show more posts on profile
+                $show_load_more = true;
+                include __DIR__ . '/../components/timeline.php'; 
+                ?>
+            </div>
         </div>
     </div>
 </body>

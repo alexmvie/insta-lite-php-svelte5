@@ -52,11 +52,12 @@
   - [X] Create timeline page
   - [X] Display posts from all users
   - [X] Sort posts by date (newest first)
-  - [ ] Pagination
-  - [X] Load more functionality
+  - [X] Pagination with load more
   - [X] Infinite scroll
   - [X] Post loading states
   - [X] Error handling
+  - [X] Profile linking in posts
+  - [X] Timeline filtering by user
 
 ## Social Features
 - [ ] Follow system

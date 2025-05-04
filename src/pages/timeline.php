@@ -89,102 +89,12 @@ if (!isset($_SESSION['user_id'])) {
                 <a href="/create-post" class="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 text-sm">+ New Post</a>
             </div>
 
-            <div id="posts-container" x-data="{
-                posts: [],
-                offset: 0,
-                limit: 3,
-                loading: false,
-                hasMore: <?php echo ($total_posts > 3) ? 'true' : 'false'; ?>,
-                totalPosts: <?php echo $total_posts; ?>,
-                init() {
-                    // Initialize with the server-rendered posts
-                    this.offset = <?php echo count($posts); ?>;
-                    console.log('Initialized infinite scroll with offset:', this.offset);
-                    
-                    // Set up intersection observer for infinite scroll
-                    this.$nextTick(() => {
-                        const observer = new IntersectionObserver((entries) => {
-                            entries.forEach(entry => {
-                                console.log('Intersection observed:', entry.isIntersecting);
-                                if (entry.isIntersecting && this.hasMore && !this.loading) {
-                                    console.log('Loading more posts...');
-                                    this.loadMorePosts();
-                                }
-                            });
-                        }, { rootMargin: '200px', threshold: 0.1 });
-                        
-                        // Observe the loading indicator
-                        if (this.$refs.loadingIndicator) {
-                            observer.observe(this.$refs.loadingIndicator);
-                            console.log('Observer attached to loading indicator');
-                        } else {
-                            console.error('Loading indicator reference not found');
-                        }
-                    });
-                },
-                async loadMorePosts() {
-                    if (this.loading || !this.hasMore) return;
-                    
-                    this.loading = true;
-                    console.log('Loading more posts from offset:', this.offset);
-                    
-                    try {
-                        const response = await fetch(`/api/posts.php?offset=${this.offset}&limit=${this.limit}`);
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        const data = await response.json();
-                        console.log('Received data:', data);
-                        
-                        if (data.posts && data.posts.length > 0) {
-                            // Append new posts to the container
-                            const postsContainer = document.getElementById('posts-list');
-                            data.posts.forEach(post => {
-                                const tempDiv = document.createElement('div');
-                                tempDiv.innerHTML = post.html;
-                                const postElement = tempDiv.firstElementChild;
-                                if (postElement) {
-                                    postsContainer.appendChild(postElement);
-                                    console.log('Appended post:', post.id);
-                                } else {
-                                    console.error('Failed to extract post element from HTML');
-                                }
-                            });
-                            
-                            // Update pagination info
-                            this.offset += data.posts.length;
-                            this.hasMore = data.pagination.has_more;
-                            console.log('Updated offset to:', this.offset, 'hasMore:', this.hasMore);
-                        } else {
-                            this.hasMore = false;
-                            console.log('No more posts available');
-                        }
-                    } catch (error) {
-                        console.error('Error loading more posts:', error);
-                    } finally {
-                        this.loading = false;
-                    }
-                }
-            }">
-                <div id="posts-list" class="grid grid-cols-1 gap-4 w-full">
-                    <?php foreach ($posts as $post): ?>
-                        <?php include __DIR__ . '/../components/post-card.php'; ?>
-                    <?php endforeach; ?>
-                </div>
-                
-                <!-- Loading indicator and load more trigger -->
-                <div x-ref="loadingIndicator" class="text-center py-8">
-                    <template x-if="loading">
-                        <div class="flex justify-center items-center space-x-2">
-                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                            <span class="text-gray-500">Loading more posts...</span>
-                        </div>
-                    </template>
-                    <template x-if="!loading && !hasMore && offset > 0">
-                        <div class="text-gray-500 py-4">No more posts to load</div>
-                    </template>
-                </div>
-            </div>
+            <?php 
+            // Use the timeline component with no filters to show all posts
+            $limit = 10; // Show 10 posts initially
+            $show_load_more = true;
+            include __DIR__ . '/../components/timeline.php'; 
+            ?>
         </div>
     </div>
 </body>
