@@ -73,7 +73,15 @@ class CommentController extends BaseController {
         require_once __DIR__ . '/../../config/database.php';
         $db = new \Database();
         $conn = $db->getConnection();
-        $data = $request->getParsedBody();
+        
+        // Robustly parse JSON or form body
+        $contentType = $request->getHeaderLine('Content-Type');
+        if (str_contains($contentType, 'application/json')) {
+            $rawBody = $request->getBody()->getContents();
+            $data = json_decode($rawBody, true) ?: [];
+        } else {
+            $data = $request->getParsedBody();
+        }
 
         // Validate required fields
         if (!isset($data['post_id']) || !isset($data['user_id']) || !isset($data['content'])) {

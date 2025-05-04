@@ -139,13 +139,126 @@ class PostController extends BaseController {
         require_once __DIR__ . '/../../config/database.php';
         $db = new \Database();
         $conn = $db->getConnection();
-        $data = $request->getParsedBody();
-        $stmt = $conn->prepare('INSERT INTO posts (user_id, content, created_at) VALUES (?, ?, NOW())');
+
+        $parsedBody = $request->getParsedBody();
+        $uploadedFiles = $request->getUploadedFiles();
+
+        // Validate image
+        if (!isset($uploadedFiles['image']) || $uploadedFiles['image']->getError() !== UPLOAD_ERR_OK) {
+            $response->getBody()->write(json_encode(['error' => 'Image is required and must be a valid file.']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+        $image = $uploadedFiles['image'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!in_array($image->getClientMediaType(), $allowedTypes)) {
+            $response->getBody()->write(json_encode(['error' => 'Only JPEG, PNG, or WebP images are allowed.']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+        if ($image->getSize() > 5 * 1024 * 1024) {
+            $response->getBody()->write(json_encode(['error' => 'Image file too large (max 5MB).']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+
+        // Load image config
+        $imageConfig = require __DIR__ . '/../../config/image.php';
+        $userId = $jwt->sub ?? null;
+        $timestamp = time();
+        $fullresDir = __DIR__ . '/../../public/' . $imageConfig['fullres_dir'];
+        $thumbDir = __DIR__ . '/../../public/' . $imageConfig['thumb_dir'];
+        if (!is_dir($fullresDir)) {
+            mkdir($fullresDir, 0777, true);
+        }
+        if (!is_dir($thumbDir)) {
+            mkdir($thumbDir, 0777, true);
+        }
+        $filename = 'post_' . $userId . '_' . $timestamp . '.webp';
+        $targetPath = $fullresDir . $filename;
+        $relativePath = $imageConfig['fullres_dir'] . $filename;
+        $thumbPath = $thumbDir . $filename;
+        $thumbRelativePath = $imageConfig['thumb_dir'] . $filename;
+
+        // Convert and save as webp
+        $tmpPath = $image->getFilePath() ?? null;
+        if (!$tmpPath) {
+            $tmpPath = tempnam(sys_get_temp_dir(), 'upl');
+            $image->moveTo($tmpPath);
+        }
+        $mime = $image->getClientMediaType();
+        if ($mime === 'image/jpeg') {
+            $src = imagecreatefromjpeg($tmpPath);
+        } elseif ($mime === 'image/png') {
+            $src = imagecreatefrompng($tmpPath);
+        } elseif ($mime === 'image/webp') {
+            $src = imagecreatefromwebp($tmpPath);
+        } else {
+            $response->getBody()->write(json_encode(['error' => 'Unsupported image type.']));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+        // Fullres resize
+        $width = imagesx($src);
+        $height = imagesy($src);
+        $maxWidth = $imageConfig['fullres_max_width'];
+        if ($width > $maxWidth) {
+            $ratio = $maxWidth / $width;
+            $newWidth = $maxWidth;
+            $newHeight = (int)($height * $ratio);
+            $fullresImg = imagecreatetruecolor($newWidth, $newHeight);
+            imagecopyresampled($fullresImg, $src, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+        } else {
+            $fullresImg = $src;
+            $newWidth = $width;
+            $newHeight = $height;
+        }
+        imagewebp($fullresImg, $targetPath, $imageConfig['webp_quality']);
+
+        // Thumbnail resize (fit/crop to 724x384)
+        $thumbW = $imageConfig['thumb_width'];
+        $thumbH = $imageConfig['thumb_height'];
+        $thumbImg = imagecreatetruecolor($thumbW, $thumbH);
+        // Fill with white background (for pngs with transparency)
+        $white = imagecolorallocate($thumbImg, 255,255,255);
+        imagefill($thumbImg, 0, 0, $white);
+        // Calculate crop/fit
+        $srcRatio = $width / $height;
+        $thumbRatio = $thumbW / $thumbH;
+        if ($srcRatio > $thumbRatio) {
+            // Source is wider
+            $cropH = $height;
+            $cropW = (int)($height * $thumbRatio);
+            $srcX = (int)(($width - $cropW) / 2);
+            $srcY = 0;
+        } else {
+            // Source is taller
+            $cropW = $width;
+            $cropH = (int)($width / $thumbRatio);
+            $srcX = 0;
+            $srcY = (int)(($height - $cropH) / 2);
+        }
+        imagecopyresampled($thumbImg, $src, 0, 0, $srcX, $srcY, $thumbW, $thumbH, $cropW, $cropH);
+        imagewebp($thumbImg, $thumbPath, $imageConfig['webp_quality']);
+        imagedestroy($src);
+        imagedestroy($fullresImg);
+        imagedestroy($thumbImg);
+        if ($tmpPath && file_exists($tmpPath)) {
+            @unlink($tmpPath);
+        }
+
+        // Insert post
+        $caption = $parsedBody['caption'] ?? '';
+        $location = $parsedBody['location'] ?? '';
+        $stmt = $conn->prepare('INSERT INTO posts (user_id, caption, location, image_path, created_at) VALUES (?, ?, ?, ?, NOW())');
         $stmt->execute([
-            $data['user_id'] ?? null,
-            $data['content'] ?? ''
+            $userId,
+            $caption,
+            $location,
+            $relativePath
         ]);
-        $response->getBody()->write(json_encode(['status' => 'success', 'id' => $conn->lastInsertId()]));
+        $postId = $conn->lastInsertId();
+        $response->getBody()->write(json_encode([
+            'status' => 'success',
+            'id' => $postId,
+            'image_path' => $relativePath
+        ]));
         return $response->withHeader('Content-Type', 'application/json');
     }
 

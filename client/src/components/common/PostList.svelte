@@ -14,7 +14,8 @@
   type Post = {
     id: number;
     user_id: number;
-    content: string;
+    caption: string;
+    location?: string;
     created_at: string;
     username?: string;
     profile_picture?: string;
@@ -23,6 +24,15 @@
     liked_by_user?: boolean;
     image_path?: string;
   };
+
+  // Config for deriving thumbnail path
+  const FULLRES_DIR = 'uploads/posts/';
+  const THUMB_DIR = 'uploads/posts/thumbs/';
+
+  function getThumbnailPath(imagePath?: string) {
+    if (!imagePath) return '';
+    return imagePath.replace(FULLRES_DIR, THUMB_DIR);
+  }
   
   let posts: Post[] = [];
   let isLoading = false;
@@ -30,7 +40,8 @@
   let error = '';
   let hasMore = true;
   let offset = initialOffset;
-  let newPostContent = '';
+  let caption = '';
+  let location = '';
   let imageFile: File | null = null;
   let isSubmitting = false;
   let isAuthenticated = false;
@@ -167,19 +178,17 @@
   }
   
   async function createPost() {
-    if ((!newPostContent.trim() && !imageFile) || !isAuthenticated || isSubmitting) return;
-    
+    if (!imageFile || !isAuthenticated || isSubmitting) {
+      error = !imageFile ? 'You must select an image to create a post.' : '';
+      return;
+    }
     try {
       isSubmitting = true;
-      
+      error = '';
       const formData = new FormData();
-      formData.append('content', newPostContent);
-      formData.append('user_id', currentUserId?.toString() || '');
-      
-      if (imageFile) {
-        formData.append('image', imageFile);
-      }
-      
+      formData.append('caption', caption);
+      formData.append('location', location);
+      formData.append('image', imageFile);
       const response = await fetch(POST_ENDPOINTS.CREATE, {
         method: 'POST',
         headers: {
@@ -187,14 +196,15 @@
         },
         body: formData
       });
-      
       if (!response.ok) {
-        throw new Error('Failed to create post');
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to create post');
       }
-      
       // Clear the form and reload posts
-      newPostContent = '';
+      caption = '';
+      location = '';
       imageFile = null;
+      imagePreviewUrl = '';
       await loadPosts(true);
     } catch (err) {
       error = err instanceof Error ? err.message : 'An error occurred while creating post';
@@ -204,10 +214,20 @@
     }
   }
   
+  let imagePreviewUrl = '';
   function handleFileChange(event: Event) {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
       imageFile = target.files[0];
+      // Show preview
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+      imagePreviewUrl = URL.createObjectURL(imageFile);
+    } else {
+      imageFile = null;
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+        imagePreviewUrl = '';
+      }
     }
   }
 </script>
@@ -224,12 +244,19 @@
       <h2 class="text-lg font-semibold mb-2">Create a Post</h2>
       <form on:submit|preventDefault={createPost} class="space-y-3">
         <textarea
-          bind:value={newPostContent}
-          placeholder="What's on your mind?"
+          bind:value={caption}
+          placeholder="Write a caption..."
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           rows="3"
           disabled={isSubmitting}
         ></textarea>
+        <input
+          type="text"
+          bind:value={location}
+          placeholder="Add a location (optional)"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isSubmitting}
+        />
         
         <div class="flex items-center">
           <label class="flex items-center space-x-2 cursor-pointer">
@@ -261,12 +288,16 @@
               </svg>
             </button>
           {/if}
-          
+                    <div class="ml-4">
+            {#if imagePreviewUrl}
+              <img src={imagePreviewUrl} alt="Image preview" class="w-16 h-16 object-cover rounded border mr-2" style="display:inline-block;vertical-align:middle;" />
+            {/if}
+          </div>
           <div class="ml-auto">
             <button
               type="submit"
               class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-              disabled={(!newPostContent.trim() && !imageFile) || isSubmitting}
+              disabled={!imageFile || isSubmitting}
             >
               {isSubmitting ? 'Posting...' : 'Post'}
             </button>

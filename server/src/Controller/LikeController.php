@@ -55,7 +55,14 @@ class LikeController {
         require_once __DIR__ . '/../../config/database.php';
         $db = new \Database();
         $conn = $db->getConnection();
-        $data = $request->getParsedBody();
+        // Robustly parse JSON or form body
+        $contentType = $request->getHeaderLine('Content-Type');
+        if (str_contains($contentType, 'application/json')) {
+            $rawBody = $request->getBody()->getContents();
+            $data = json_decode($rawBody, true) ?: [];
+        } else {
+            $data = $request->getParsedBody();
+        }
         $stmt = $conn->prepare('INSERT INTO likes (post_id, user_id, created_at) VALUES (?, ?, NOW())');
         $stmt->execute([
             $data['post_id'] ?? null,
@@ -69,7 +76,14 @@ class LikeController {
         require_once __DIR__ . '/../../config/database.php';
         $db = new \Database();
         $conn = $db->getConnection();
-        $data = $request->getParsedBody();
+        // Robustly parse JSON or form body
+        $contentType = $request->getHeaderLine('Content-Type');
+        if (str_contains($contentType, 'application/json')) {
+            $rawBody = $request->getBody()->getContents();
+            $data = json_decode($rawBody, true) ?: [];
+        } else {
+            $data = $request->getParsedBody();
+        }
         $stmt = $conn->prepare('DELETE FROM likes WHERE post_id = ? AND user_id = ?');
         $stmt->execute([
             $data['post_id'] ?? null,

@@ -122,6 +122,25 @@ class AdminController extends BaseController {
         require_once __DIR__ . '/../../config/database.php';
         $db = new \Database();
         $conn = $db->getConnection();
+        // Delete all post images for this user
+        $stmt = $conn->prepare('SELECT image_path FROM posts WHERE user_id=?');
+        $stmt->execute([$args['id']]);
+        $posts = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        foreach ($posts as $post) {
+            if (!empty($post['image_path'])) {
+                $imagePath = __DIR__ . '/../../public/' . $post['image_path'];
+                if (file_exists($imagePath)) {
+                    @unlink($imagePath);
+                }
+                // Try to delete thumbnail if exists
+                $thumbPath = str_replace('uploads/posts/', 'uploads/posts/thumbs/', $post['image_path']);
+                $thumbFullPath = __DIR__ . '/../../public/' . $thumbPath;
+                if (file_exists($thumbFullPath)) {
+                    @unlink($thumbFullPath);
+                }
+            }
+        }
+        // Now delete user (cascades to posts/comments/likes)
         $stmt = $conn->prepare('DELETE FROM users WHERE id=?');
         $stmt->execute([$args['id']]);
         $response->getBody()->write(json_encode(['status' => 'success']));
@@ -223,6 +242,23 @@ class AdminController extends BaseController {
         require_once __DIR__ . '/../../config/database.php';
         $db = new \Database();
         $conn = $db->getConnection();
+        // Get image_path before deleting
+        $stmt = $conn->prepare('SELECT image_path FROM posts WHERE id=?');
+        $stmt->execute([$args['id']]);
+        $post = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($post && !empty($post['image_path'])) {
+            $imagePath = __DIR__ . '/../../public/' . $post['image_path'];
+            if (file_exists($imagePath)) {
+                @unlink($imagePath);
+            }
+            // Try to delete thumbnail if exists
+            $thumbPath = str_replace('uploads/posts/', 'uploads/posts/thumbs/', $post['image_path']);
+            $thumbFullPath = __DIR__ . '/../../public/' . $thumbPath;
+            if (file_exists($thumbFullPath)) {
+                @unlink($thumbFullPath);
+            }
+        }
+        // Now delete post (cascades to comments/likes)
         $stmt = $conn->prepare('DELETE FROM posts WHERE id=?');
         $stmt->execute([$args['id']]);
         $response->getBody()->write(json_encode(['status' => 'success']));
