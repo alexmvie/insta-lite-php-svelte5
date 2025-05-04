@@ -27,7 +27,7 @@ $success = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $caption = $_POST['caption'] ?? '';
-    $image_url = ''; // In a real app, we would handle file uploads here
+    $image_path = ''; // In a real app, we would handle file uploads here
     
     // For demo purposes, we'll use a fun placeholder image
     if (isset($_POST['use_placeholder']) && $_POST['use_placeholder'] === 'yes') {
@@ -41,30 +41,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
         
         // Select a random image
-        $image_url = $placeholder_images[array_rand($placeholder_images)];
+        $image_path = $placeholder_images[array_rand($placeholder_images)];
     }
     
     try {
-        // Check if image_url column exists in posts table
+        // Check if image_path column exists in posts table
         $columnExists = false;
         try {
-            $check = $db->query("SHOW COLUMNS FROM posts LIKE 'image_url'");
+            $check = $db->query("SHOW COLUMNS FROM posts LIKE 'image_path'");
             $columnExists = ($check->rowCount() > 0);
         } catch (Exception $e) {
             // Column doesn't exist or other error
         }
         
         if ($columnExists) {
-            // If image_url column exists, use it
+            // If image_path column exists, use it
             $stmt = $db->prepare("
-                INSERT INTO posts (user_id, caption, image_url, created_at) 
+                INSERT INTO posts (user_id, caption, image_path, created_at) 
                 VALUES (?, ?, ?, NOW())
             ");
             
             $stmt->execute([
                 $_SESSION['user_id'],
                 $caption,
-                $image_url
+                $image_path
             ]);
         } else {
             // If image_url column doesn't exist, don't include it

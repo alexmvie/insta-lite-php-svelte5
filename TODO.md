@@ -41,22 +41,22 @@
   - [ ] Hashtag support
   - [ ] Image optimization
 
-- [ ] Post display
-  - [ ] Grid view
-  - [ ] Single post view
-  - [ ] Like functionality
-  - [ ] Comment system
+- [X] Post display
+  - [X] Grid view
+  - [X] Single post view
+  - [X] Like functionality
+  - [X] Comment system
   - [ ] Share functionality
 
-- [ ] Public Timeline
-  - [ ] Create timeline page
-  - [ ] Display posts from all users
-  - [ ] Sort posts by date (newest first)
+- [X] Public Timeline
+  - [X] Create timeline page
+  - [X] Display posts from all users
+  - [X] Sort posts by date (newest first)
   - [ ] Pagination
-  - [ ] Load more functionality
-  - [ ] Infinite scroll
-  - [ ] Post loading states
-  - [ ] Error handling
+  - [X] Load more functionality
+  - [X] Infinite scroll
+  - [X] Post loading states
+  - [X] Error handling
 
 ## Social Features
 - [ ] Follow system

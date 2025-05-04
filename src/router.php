@@ -17,6 +17,12 @@ $routes = [
     '/logout' => '/src/auth/logout.php',
     '/verification-pending' => '/src/pages/verification-pending.php',
     
+    // API routes
+    '/api/likes.php' => '/src/api/likes.php',
+    '/api/comments.php' => '/src/api/comments.php',
+    '/api/posts.php' => '/src/api/posts.php',
+    '/api/like.php' => '/src/api/likes.php',  // Alias for consistency
+    
     // Debug routes
     '/debug/mail' => '/src/debug/debugmail.php',
     '/debug/session' => '/src/debug/session-test.php',

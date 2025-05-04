@@ -10,7 +10,12 @@ require_once __DIR__ . '/../auth/auth.php';
 // Get the database connection
 $db = (new Database())->getConnection();
 
-// Get posts from all users, sorted by date
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Get initial batch of posts (first 3)
 $posts = [];
 try {
     // Check if posts table exists
@@ -23,28 +28,38 @@ try {
     }
     
     if ($tableExists) {
+        // Get current user ID if logged in
+        $current_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+        
+        // Get only first 3 posts initially
         $stmt = $db->prepare("
             SELECT 
                 p.*, 
                 u.username, 
-                u.profile_picture 
+                u.profile_picture,
+                (SELECT COUNT(*) FROM likes WHERE post_id = p.id) AS like_count,
+                (SELECT COUNT(*) FROM comments WHERE post_id = p.id) AS comment_count,
+                (SELECT COUNT(*) > 0 FROM likes WHERE post_id = p.id AND user_id = :current_user_id) AS is_liked_by_current_user
             FROM posts p 
             JOIN users u ON p.user_id = u.id 
             ORDER BY p.created_at DESC 
-            LIMIT 20
+            LIMIT 3
         ");
+        $stmt->bindParam(':current_user_id', $current_user_id, PDO::PARAM_INT);
         $stmt->execute();
         $posts = $stmt->fetchAll();
+        
+        // Count total posts for pagination info
+        $stmt = $db->prepare("SELECT COUNT(*) as total FROM posts");
+        $stmt->execute();
+        $total_posts = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     }
 } catch (Exception $e) {
     // Handle error silently
     error_log("Timeline error: " . $e->getMessage());
 }
 
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Session already started above
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -74,79 +89,102 @@ if (!isset($_SESSION['user_id'])) {
                 <a href="/create-post" class="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 text-sm">+ New Post</a>
             </div>
 
-            <div class="grid grid-cols-1 gap-4">
-                <?php foreach ($posts as $post): ?>
-                    <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
-                        <div class="p-3">
-                            <div class="flex items-center mb-3">
-                                <img src="<?php 
-                                    // Use fun avatar if profile picture is not set or is default
-                                    if (empty($post['profile_picture']) || $post['profile_picture'] == 'default-avatar.png') {
-                                        echo 'https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($post['username']);
-                                    } else {
-                                        echo htmlspecialchars($post['profile_picture']);
-                                    }
-                                ?>" 
-                                     alt="Profile Picture" 
-                                     class="w-8 h-8 rounded-full mr-2">
-                                <div>
-                                    <h3 class="font-semibold text-sm">
-                                        <?php echo htmlspecialchars($post['username']); ?>
-                                    </h3>
-                                    <p class="text-xs text-gray-500">
-                                        <?php echo date('M d, Y', strtotime($post['created_at'])); ?>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <?php if (isset($post['image_url']) && $post['image_url']): ?>
-                            <img src="<?php echo htmlspecialchars($post['image_url']); ?>" 
-                                 alt="Post Image" 
-                                 class="w-full h-auto max-h-96 object-cover">
-                        <?php endif; ?>
-
-                        <p class="px-3 py-2 text-sm">
-                            <?php echo nl2br(htmlspecialchars($post['caption'])); ?>
-                        </p>
-
-                        <div class="px-3 py-2 flex justify-between items-center text-xs text-gray-500 border-t border-gray-100">
-                            <div class="flex items-center space-x-4">
-                                <button class="like-button flex items-center" 
-                                        hx-post="/api/like" 
-                                        hx-vals='{"id": "<?php echo $post['id']; ?>"}' 
-                                        hx-target="this">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                                    </svg>
-                                    <span class="ml-1">Like</span>
-                                </button>
-                                <span class="like-count text-xs">0</span>
-                            </div>
-                            <div class="flex items-center">
-                                <button class="comment-button flex items-center" 
-                                        hx-post="/api/comment" 
-                                        hx-vals='{"id": "<?php echo $post['id']; ?>"}' 
-                                        hx-target="this">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                                    </svg>
-                                    <span class="ml-1">Comment</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+            <div id="posts-container" x-data="{
+                posts: [],
+                offset: 0,
+                limit: 3,
+                loading: false,
+                hasMore: <?php echo ($total_posts > 3) ? 'true' : 'false'; ?>,
+                totalPosts: <?php echo $total_posts; ?>,
+                init() {
+                    // Initialize with the server-rendered posts
+                    this.offset = <?php echo count($posts); ?>;
+                    console.log('Initialized infinite scroll with offset:', this.offset);
+                    
+                    // Set up intersection observer for infinite scroll
+                    this.$nextTick(() => {
+                        const observer = new IntersectionObserver((entries) => {
+                            entries.forEach(entry => {
+                                console.log('Intersection observed:', entry.isIntersecting);
+                                if (entry.isIntersecting && this.hasMore && !this.loading) {
+                                    console.log('Loading more posts...');
+                                    this.loadMorePosts();
+                                }
+                            });
+                        }, { rootMargin: '200px', threshold: 0.1 });
+                        
+                        // Observe the loading indicator
+                        if (this.$refs.loadingIndicator) {
+                            observer.observe(this.$refs.loadingIndicator);
+                            console.log('Observer attached to loading indicator');
+                        } else {
+                            console.error('Loading indicator reference not found');
+                        }
+                    });
+                },
+                async loadMorePosts() {
+                    if (this.loading || !this.hasMore) return;
+                    
+                    this.loading = true;
+                    console.log('Loading more posts from offset:', this.offset);
+                    
+                    try {
+                        const response = await fetch(`/api/posts.php?offset=${this.offset}&limit=${this.limit}`);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        const data = await response.json();
+                        console.log('Received data:', data);
+                        
+                        if (data.posts && data.posts.length > 0) {
+                            // Append new posts to the container
+                            const postsContainer = document.getElementById('posts-list');
+                            data.posts.forEach(post => {
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = post.html;
+                                const postElement = tempDiv.firstElementChild;
+                                if (postElement) {
+                                    postsContainer.appendChild(postElement);
+                                    console.log('Appended post:', post.id);
+                                } else {
+                                    console.error('Failed to extract post element from HTML');
+                                }
+                            });
+                            
+                            // Update pagination info
+                            this.offset += data.posts.length;
+                            this.hasMore = data.pagination.has_more;
+                            console.log('Updated offset to:', this.offset, 'hasMore:', this.hasMore);
+                        } else {
+                            this.hasMore = false;
+                            console.log('No more posts available');
+                        }
+                    } catch (error) {
+                        console.error('Error loading more posts:', error);
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }">
+                <div id="posts-list" class="grid grid-cols-1 gap-4 w-full">
+                    <?php foreach ($posts as $post): ?>
+                        <?php include __DIR__ . '/../components/post-card.php'; ?>
+                    <?php endforeach; ?>
                 </div>
-            <?php endforeach; ?>
-        </div>
-
-        <div class="text-center mt-4 mb-8">
-            <button class="bg-gray-200 px-4 py-2 rounded-full text-sm" 
-                    hx-get="/api/posts?limit=10&offset=10" 
-                    hx-target=".grid"
-                    hx-swap="afterend">
-                Load More
-            </button>
+                
+                <!-- Loading indicator and load more trigger -->
+                <div x-ref="loadingIndicator" class="text-center py-8">
+                    <template x-if="loading">
+                        <div class="flex justify-center items-center space-x-2">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                            <span class="text-gray-500">Loading more posts...</span>
+                        </div>
+                    </template>
+                    <template x-if="!loading && !hasMore && offset > 0">
+                        <div class="text-gray-500 py-4">No more posts to load</div>
+                    </template>
+                </div>
+            </div>
         </div>
     </div>
 </body>
